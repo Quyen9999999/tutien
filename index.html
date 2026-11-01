@@ -13188,5 +13188,61 @@ draw=function(){
 window.__worldBoss={state:W_,spawn:i=>spawnB(W_[i])};
 })();
 </script>
+<script>
+/* ===== v59: LƯU GAME LÊN CLOUD (Supabase) — đăng nhập tài khoản online, tự đồng bộ dữ liệu giữa các thiết bị ===== */
+(function(){
+'use strict';
+const SB_URL='https://ljwsmbqljjsripftoxuf.supabase.co';
+const SB_KEY='sb_publishable_73XmfBfumISU69Paon67aA_3fnyuWl8';
+const SKEY='tuTien2D_cloud_session',SKIP=/^(tuTien2D_accounts_v1|tuTien2D_session_v1|tuTien2D_remembered_v1|tuTien2D_chat_v1|tuTien2D_cloud_session)$/;
+let S=null,busy=false,lastSent='',lastAt='';
+try{S=JSON.parse(localStorage.getItem(SKEY)||'null')}catch(e){}
+const H=(tok,x)=>Object.assign({'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||SB_KEY)},x||{});
+const mail=u=>u+'@tutien.game';
+const okName=u=>/^[a-z0-9_]{3,20}$/.test(u);
+function snap(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('tuTien2D')===0&&!SKIP.test(k))o[k]=localStorage.getItem(k)}return o}
+function setS(s){S=s;try{s?localStorage.setItem(SKEY,JSON.stringify(s)):localStorage.removeItem(SKEY)}catch(e){}ui()}
+async function auth(path,body){const r=await fetch(SB_URL+'/auth/v1/'+path,{method:'POST',headers:H(null),body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.msg||j.error_description||j.message||('Lỗi '+r.status));return j}
+function keep(j,u){setS({u,id:j.user.id,at:j.access_token,rt:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000})}
+async function token(){if(!S)return null;if(Date.now()>S.exp-60000){try{const j=await auth('token?grant_type=refresh_token',{refresh_token:S.rt});keep(j,S.u)}catch(e){setS(null);return null}}return S.at}
+async function push(force,ka){if(!S||busy)return false;const d=snap(),s=JSON.stringify(d);if(!force&&s===lastSent)return true;const t=await token();if(!t)return false;
+ try{const r=await fetch(SB_URL+'/rest/v1/saves?on_conflict=user_id',{method:'POST',keepalive:!!ka,headers:H(t,{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({user_id:S.id,username:S.u,data:d,updated_at:new Date().toISOString()})});
+  if(!r.ok)throw 0;lastSent=s;lastAt=new Date().toLocaleTimeString('vi-VN');ui();return true}catch(e){msg('Không lưu được lên cloud (kiểm tra mạng).');return false}}
+async function pull(){const t=await token();if(!t)return;busy=true;
+ try{const r=await fetch(SB_URL+'/rest/v1/saves?select=data&user_id=eq.'+S.id,{headers:H(t)});const j=await r.json();
+  const loc=snap(),has=Object.keys(loc).length>0;
+  if(Array.isArray(j)&&j.length){const cd=j[0].data||{};
+   if(JSON.stringify(cd)===JSON.stringify(loc)){busy=false;lastSent=JSON.stringify(loc);return}
+   const useCloud=!has||confirm('Tài khoản "'+S.u+'" đã có dữ liệu trên cloud.\n\nOK = dùng dữ liệu CLOUD (ghi đè dữ liệu máy này)\nHủy = giữ dữ liệu MÁY NÀY (ghi đè cloud)');
+   if(useCloud){Object.keys(loc).forEach(k=>localStorage.removeItem(k));Object.keys(cd).forEach(k=>{if(!SKIP.test(k))localStorage.setItem(k,cd[k])});lastSent=JSON.stringify(snap());location.reload();return}}
+  busy=false;await push(true)}catch(e){busy=false;msg('Không tải được dữ liệu cloud.')}}
+/* ---------- giao diện ---------- */
+let box,btn,out;
+function msg(t){if(out)out.textContent=t}
+function mk(tag,css,html){const e=document.createElement(tag);e.style.cssText=css||'';if(html!=null)e.innerHTML=html;return e}
+function ui(){if(!box)return;const on=!!S;btn.textContent=on?'☁✓':'☁';btn.style.background=on?'#1d7a46':'#333';
+ box.querySelector('#cl_in').style.display=on?'none':'block';box.querySelector('#cl_on').style.display=on?'block':'none';
+ if(on)box.querySelector('#cl_who').textContent='Đã đăng nhập: '+S.u+(lastAt?' • lưu lúc '+lastAt:'')}
+function build(){
+ btn=mk('button','position:fixed;top:8px;right:8px;z-index:99999;width:38px;height:38px;border-radius:50%;border:1px solid #888;color:#fff;font-size:16px;background:#333;opacity:.9','☁');
+ box=mk('div','position:fixed;top:52px;right:8px;z-index:99999;width:min(270px,calc(100vw - 16px));background:rgba(15,15,25,.96);color:#eee;border:1px solid #666;border-radius:10px;padding:12px;font:13px system-ui;display:none');
+ const I='width:100%;box-sizing:border-box;margin:4px 0;padding:8px;border-radius:6px;border:1px solid #555;background:#222;color:#fff;font-size:14px',B='width:100%;margin:4px 0;padding:9px;border:0;border-radius:6px;color:#fff;font-size:14px';
+ box.innerHTML='<b>☁ Tài khoản online</b><div id="cl_in"><input id="cl_u" placeholder="Tên (a-z, 0-9, _ | 3-20 ký tự)" autocapitalize="none" style="'+I+'"><input id="cl_p" type="password" placeholder="Mật khẩu (từ 6 ký tự)" style="'+I+'"><button id="cl_li" style="'+B+';background:#1d7a46">Đăng nhập</button><button id="cl_re" style="'+B+';background:#3a5fc8">Đăng ký</button></div><div id="cl_on" style="display:none"><div id="cl_who" style="margin:8px 0"></div><button id="cl_sv" style="'+B+';background:#1d7a46">Lưu lên cloud ngay</button><button id="cl_lo" style="'+B+';background:#8a2a2a">Đăng xuất</button></div><div id="cl_msg" style="margin-top:6px;color:#ffd45c;min-height:16px"></div>';
+ document.body.appendChild(btn);document.body.appendChild(box);out=box.querySelector('#cl_msg');
+ btn.onclick=()=>{box.style.display=box.style.display==='none'?'block':'none'};
+ const go=async reg=>{const u=box.querySelector('#cl_u').value.trim().toLowerCase(),p=box.querySelector('#cl_p').value;
+  if(!okName(u))return msg('Tên chỉ gồm a-z, 0-9, _ (3-20 ký tự).');if(p.length<6)return msg('Mật khẩu tối thiểu 6 ký tự.');msg('Đang xử lý...');
+  try{let j;if(reg){j=await auth('signup',{email:mail(u),password:p});if(!j.access_token)throw new Error('Đăng ký xong nhưng cần tắt "Confirm email" trong Supabase.')}else j=await auth('token?grant_type=password',{email:mail(u),password:p});
+   keep(j,u);msg('Thành công!');await pull()}catch(e){const m=String(e.message||e);msg(/already|registered/i.test(m)?'Tên này đã có người dùng.':/invalid login/i.test(m)?'Sai tên hoặc mật khẩu.':m)}};
+ box.querySelector('#cl_li').onclick=()=>go(false);box.querySelector('#cl_re').onclick=()=>go(true);
+ box.querySelector('#cl_sv').onclick=async()=>{msg('Đang lưu...');msg(await push(true)?'Đã lưu lên cloud.':'Lưu thất bại.')};
+ box.querySelector('#cl_lo').onclick=async()=>{await push(true);setS(null);lastSent='';msg('Đã đăng xuất.')};
+ ui();if(S)pull()}
+if(document.body)build();else document.addEventListener('DOMContentLoaded',build);
+setInterval(()=>{if(S&&!document.hidden)push(false)},30000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S)push(false,true)});
+window.addEventListener('pagehide',()=>{if(S)push(false,true)});
+})();
+</script>
 </body>
 </html>
