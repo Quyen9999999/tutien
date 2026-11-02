@@ -9926,10 +9926,10 @@ const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{drawFX()}catc
   function send(txt){
     const v=String(txt==null?inp.value:txt).trim();if(txt==null)inp.value='';if(!v)return;
     if(v==='/xoa'){log=[];try{localStorage.removeItem(KEY)}catch(_){}render();return}
-    if(v==='/help'){add('sys','','Enter: mở chat • /xoa: xóa lịch sử • Esc: thoát ô gõ. Tin nhắn hiện chỉ mình bạn thấy.');return}
-    const nm=(typeof P!=='undefined'&&P.name)||'Đạo Hữu';add('world',nm,v);bubble={x:v.slice(0,40),until:Date.now()+4500}}
+    if(v==='/help'){add('sys','','Enter: mở chat • /xoa: xóa lịch sử • Esc: thoát ô gõ. Đăng nhập ☁ để chat với mọi người chơi.');return}
+    const nm=(typeof P!=='undefined'&&P.name)||'Đạo Hữu';add('world',nm,v);try{window.__chatOut&&window.__chatOut(nm,v)}catch(e){}bubble={x:v.slice(0,40),until:Date.now()+4500}}
   box.querySelector('#chat-send').addEventListener('click',()=>send());
-  window.__chatSend=send;
+  window.__chatSend=send;window.__chatIn=function(n,x){add('world',n,x)};
   const Q=['👋 Xin chào!','👍 Ok','🙏 Cảm ơn','❓ Giúp với','⚔️ Cày thôi!','😄 Haha'],qe=box.querySelector('#chat-quick');
   Q.forEach(q=>{const b=document.createElement('button');b.type='button';b.textContent=q;b.addEventListener('click',()=>send(q));qe.appendChild(b)});
   // ghi toast vào tab Hệ thống
@@ -13124,12 +13124,12 @@ update=function(){
  _up.apply(this,arguments);
  if(!started)return;if(!T0){T0=Date.now();W_.forEach(b=>b.at=T0+b.delay)}
  if(bi>0)bi--;const now=Date.now();
- for(const b of W_){if(!b.alive&&now>=b.at&&!(b.ent&&0))spawnB(b);if(b.alive)ensure(b)}
+ for(const b of W_){if(!b.sync&&!b.alive&&now>=b.at)spawnB(b);if(b.alive)ensure(b)}
  if(other()){FX.length=0;return}
  for(const b of W_){const e=b.ent;if(!b.alive||!e||currentMapIndex!==b.map)continue;
-  const lost=(e._lh||e.hp)-e.hp;if(lost>0){const k=you();b.log[k]=(b.log[k]||0)+lost}e._lh=e.hp;
+  const lost=(e._lh||e.hp)-e.hp;if(lost>0){const k=you();b.log[k]=(b.log[k]||0)+lost;if(window.__wbHit)window.__wbHit(b.i,lost)}e._lh=e.hp;
   if(e.hp<=0||e.dead){killB(b);continue}
-  if(time%60===0&&b.bots<b.max*.4){BOTS.forEach((n,i)=>{const d=b.max*.00022*(1.3-i*.12)*(.6+Math.random()*.8);b.bots+=d;b.log[n]=(b.log[n]||0)+d;e.hp-=d});e._lh=e.hp}
+  if(!b.sync&&time%60===0&&b.bots<b.max*.4){BOTS.forEach((n,i)=>{const d=b.max*.00022*(1.3-i*.12)*(.6+Math.random()*.8);b.bots+=d;b.log[n]=(b.log[n]||0)+d;e.hp-=d});e._lh=e.hp}
   b.hp=e.hp;
   if(!b.enr&&e.hp<b.max*.3){b.enr=true;e.sp*=1.3;say('⚠ '+b.nm+' bạo nộ! Kỹ năng dồn dập hơn!')}
   if(--b.sc<=0&&P.hp>0){b.sc=(b.enr?210:330)+Math.random()*90;cast(b,['vuc','hoa','tram'][Math.random()*3|0])}
@@ -13185,7 +13185,7 @@ draw=function(){
   if(banner&&Date.now()<banner.until){const a=Math.min(1,(banner.until-Date.now())/800);c.save();c.globalAlpha=a;c.fillStyle='rgba(20,0,8,.82)';c.fillRect(0,100,W,44);c.fillStyle=banner.col;c.font='bold '+(W<500?12:16)+'px system-ui';c.textAlign='center';c.fillText(banner.t,W/2,128);c.restore()}
  }}catch(z){console.warn('World boss (vẽ):',z)}
  return r};
-window.__worldBoss={state:W_,spawn:i=>spawnB(W_[i])};
+window.__worldBoss={state:W_,spawn:i=>spawnB(W_[i]),you:you};
 })();
 </script>
 <script>
@@ -13238,10 +13238,93 @@ function build(){
  box.querySelector('#cl_sv').onclick=async()=>{msg('Đang lưu...');msg(await push(true)?'Đã lưu lên cloud.':'Lưu thất bại.')};
  box.querySelector('#cl_lo').onclick=async()=>{await push(true);setS(null);lastSent='';msg('Đã đăng xuất.')};
  ui();if(S)pull()}
+async function rpc(fn,a){const t=await token();if(!t)return null;try{const r=await fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:H(t),body:JSON.stringify(a||{})});return r.ok?await r.json():null}catch(e){return null}}
+async function rest(path,o){const t=await token();if(!t)return null;try{const r=await fetch(SB_URL+'/rest/v1/'+path,Object.assign({headers:H(t,(o&&o.h)||{})},o&&o.m?{method:o.m,body:o.b}:{}));return r.ok?await r.json().catch(()=>[]):null}catch(e){return null}}
+window.__sb={url:SB_URL,key:SB_KEY,token:token,user:()=>S,rpc:rpc,rest:rest,logout:()=>{setS(null);lastSent='';msg('Đã đăng xuất.')},push:push};
 if(document.body)build();else document.addEventListener('DOMContentLoaded',build);
 setInterval(()=>{if(S&&!document.hidden)push(false)},30000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S)push(false,true)});
 window.addEventListener('pagehide',()=>{if(S)push(false,true)});
+})();
+</script>
+<script>
+/* ===== v60: CHAT THẾ GIỚI ONLINE (Supabase) — tin nhắn tab "Thế giới" được gửi/nhận giữa mọi người chơi đã đăng nhập ☁ ===== */
+(function(){
+'use strict';
+const SB=()=>window.__sb;let last=0,warned=0,lastSend=0;
+try{last=+localStorage.getItem('tt_chatnet_last')||0}catch(e){}
+const H=t=>({apikey:SB().key,Authorization:'Bearer '+t});
+async function get(q){const t=await SB().token();if(!t)return null;try{const r=await fetch(SB().url+'/rest/v1/chat_messages?'+q,{headers:H(t)});return r.ok?await r.json():null}catch(e){return null}}
+async function poll(){const s=SB();if(document.hidden||!s||!s.user())return;const u=s.user();let rows;
+ if(!last){rows=await get('select=id,user_id,name,body&order=id.desc&limit=15');if(rows)rows.reverse()}
+ else rows=await get('select=id,user_id,name,body&id=gt.'+last+'&order=id.asc&limit=50');
+ if(!rows||!rows.length)return;
+ rows.forEach(m=>{last=Math.max(last,m.id);if(m.user_id!==u.id&&window.__chatIn)window.__chatIn(String(m.name||'Đạo Hữu').slice(0,24),String(m.body||'').slice(0,160))});
+ try{localStorage.setItem('tt_chatnet_last',String(last))}catch(e){}}
+window.__chatOut=async function(name,body){const s=SB();
+ if(!s||!s.user()){if(!warned++){try{toast('☁ Đăng nhập tài khoản online (nút ☁ góc phải) để chat với mọi người chơi.')}catch(e){}}return}
+ if(Date.now()-lastSend<1200)return;lastSend=Date.now();const t=await s.token();if(!t)return;
+ try{const r=await fetch(s.url+'/rest/v1/chat_messages',{method:'POST',headers:Object.assign(H(t),{'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify({name:String(name).slice(0,24),body:String(body).slice(0,160)})});
+  if(!r.ok)toast('Gửi tin nhắn thất bại.')}catch(e){}};
+setInterval(poll,3000);setTimeout(poll,1500);
+})();
+</script>
+<script>
+/* ===== v61: ONLINE ĐẦY ĐỦ — boss thế giới dùng chung • thấy người chơi khác • thông báo/quà/khóa từ admin (cần đăng nhập ☁) ===== */
+(function(){
+'use strict';
+const SB=()=>window.__sb,WB=()=>window.__worldBoss;
+const other=()=>['__thienThanhTran','__tangKinhCac','__biCanh','__loiDai'].some(k=>{const o=window[k];return!!(o&&o.state&&o.state.on)});
+/* ---- 1. boss thế giới dùng chung ---- */
+const pend=[0,0],lastRound={};let wasOn=false;
+window.__wbHit=(i,d)=>{pend[i]=(pend[i]||0)+d};
+async function bossTick(){const s=SB(),w=WB();if(!w)return;
+ if(!s||!s.user()){if(wasOn){wasOn=false;w.state.forEach(b=>{b.sync=false;b.at=Date.now()+60000})}return}
+ wasOn=true;
+ for(let i=0;i<2;i++){const d=Math.round(pend[i]||0);if(d>0){pend[i]-=d;s.rpc('hit_boss',{p_boss:i,p_dmg:d,p_name:(P.name||'Đạo Hữu')})}}
+ const j=await s.rpc('boss_poll');if(!j||!j.bosses)return;const me=s.user().id,you=w.you();
+ j.bosses.forEach(sv=>{const b=w.state[sv.id];if(!b)return;b.sync=true;b.max=sv.hpmax;const pn=pend[sv.id]||0;
+  if(sv.alive){
+   if(lastRound[sv.id]===undefined){b.alive=true;b.ent=null;b.log={};b.enr=false;b.sc=120;lastRound[sv.id]=sv.round}
+   else if(lastRound[sv.id]!==sv.round||!b.alive){lastRound[sv.id]=sv.round;w.spawn(sv.id)}
+   b.hp=Math.max(1,sv.hp-pn);if(b.ent){b.ent.max=sv.hpmax;b.ent.hp=b.hp;b.ent._lh=b.hp}
+   const rk={};j.ranks.filter(r=>r.boss_id===sv.id).forEach(r=>{rk[r.user_id===me?you:r.name]=Number(r.dmg)});if(pn)rk[you]=(rk[you]||0)+pn;b.log=rk;
+  }else{lastRound[sv.id]=sv.round;
+   if(b.alive){if(b.ent&&typeof currentMapIndex!=='undefined'&&currentMapIndex===b.map){b.ent.hp=0;b.ent._lh=0}else{b.alive=false;b.ent=null}}}
+ })}
+setInterval(bossTick,3000);
+/* ---- 2. thấy người chơi khác trên cùng map ---- */
+const others=new Map();let lastMap=-1;
+async function presence(){const s=SB();if(!s||!s.user()||document.hidden||typeof started==='undefined'||!started)return;
+ if(currentMapIndex!==lastMap){others.clear();lastMap=currentMapIndex}
+ const rows=await s.rpc('presence_sync',{p_map:currentMapIndex,p_x:Math.round(P.x),p_y:Math.round(P.y),p_name:(P.name||'Đạo Hữu'),p_ch:(typeof currentCharId==='number'?currentCharId:0)});
+ if(!Array.isArray(rows))return;const seen=new Set();
+ rows.forEach(r=>{seen.add(r.user_id);let o=others.get(r.user_id);if(!o){o={x:r.x,y:r.y,dir:0,mv:false};others.set(r.user_id,o)}o.tx=r.x;o.ty=r.y;o.name=r.name;o.ch=r.ch});
+ others.forEach((o,k)=>{if(!seen.has(k))others.delete(k)})}
+setInterval(presence,1500);
+const _d=draw;
+draw=function(){const r=_d.apply(this,arguments);
+ try{if(others.size&&!other()&&typeof ctx!=='undefined'){const c=ctx;c.save();c.translate(-Math.floor(camera.x),-Math.floor(camera.y));
+  others.forEach(o=>{const dx=o.tx-o.x,dy=o.ty-o.y;o.x+=dx*.18;o.y+=dy*.18;o.mv=Math.abs(dx)+Math.abs(dy)>3;if(o.mv)o.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?1:2):(dy<0?3:0);
+   const ch=CHARACTERS[o.ch]||CHARACTERS[0];try{drawCharacterAt(c,ch,o.x,o.y,1.25,o.dir,o.mv,time)}catch(e){}
+   c.font='bold 11px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='rgba(0,0,0,.8)';c.strokeText(o.name,o.x,o.y-70);c.fillStyle='#8ff0ff';c.fillText(o.name,o.x,o.y-70)});
+  c.restore()}}catch(e){}
+ return r};
+/* ---- 3. thông báo / quà / khóa tài khoản từ admin ---- */
+let la=0,inited=false,rl=false;
+const ROOTIDS=['pham','ha_kim','ha_moc','ha_thuy','ha_hoa','ha_tho','th_phong','th_loi','th_bang','ti_thanh','ti_kim','ti_hac','hon_don'];
+function applyLevel(n){n=Math.max(1,Math.min(100,n|0));const d=n-P.level;if(!d)return;P.maxHp=Math.max(50,P.maxHp+35*d);P.maxMp=Math.max(20,P.maxMp+20*d);P.atk=Math.max(5,P.atk+3*d);P.maxExp=Math.max(30,Math.round(P.maxExp*Math.pow(1.3,d)));P.level=n;P.stage=cultivationForLevel(n).name;P.exp=0;P.hp=P.maxHp;P.mp=P.maxMp;try{document.getElementById('pstage').textContent=P.stage+' • Tầng '+P.level;updateBreakBtn();ui();saveGame()}catch(e){}toast('⚡ Admin chỉnh tu vi: '+P.stage+' • Tầng '+P.level)}
+function setRoot(id){if(id!=='none'&&ROOTIDS.indexOf(id)<0)return false;const k='tuTien2D_linhcan_v1';let m={},a='guest';try{m=JSON.parse(localStorage.getItem(k)||'{}')}catch(e){}try{const q=JSON.parse(localStorage.getItem('tuTien2D_session_v1')||'null');if(q&&q.user)a=q.user}catch(e){}
+ if(id==='none')delete m[a];else m[a]=Object.assign(m[a]||{},{id:id});try{localStorage.setItem(k,JSON.stringify(m))}catch(e){return false}return true}
+async function live(){const s=SB();if(!s||!s.user()||document.hidden)return;
+ const bn=await s.rest('bans?select=reason&user_id=eq.'+s.user().id);if(bn&&bn.length){alert('Tài khoản của bạn đã bị khóa. '+(bn[0].reason||''));s.logout();return}
+ if(!inited){const z=await s.rest('announcements?select=id&order=id.desc&limit=1');if(z===null)return;la=z[0]?z[0].id:0;inited=true}
+ else{const a=await s.rest('announcements?select=id,body&id=gt.'+la+'&order=id.asc&limit=5');if(a&&a.length)a.forEach(x=>{la=Math.max(la,x.id);try{toast('📢 '+x.body)}catch(e){}})}
+ const g=await s.rest('gifts?select=id,gold,exp,note,set_level,set_root&claimed=eq.false&limit=10');
+ if(g&&g.length)for(const x of g){const c=await s.rest('gifts?id=eq.'+x.id+'&claimed=eq.false',{m:'PATCH',b:'{"claimed":true}',h:{Prefer:'return=representation'}});
+  if(c&&c.length){try{if(x.gold){gold+=x.gold;const e=document.getElementById('goldv');if(e)e.textContent=gold}if(x.exp&&typeof gain==='function')gain(x.exp);if(x.set_level)applyLevel(x.set_level);if(x.set_root&&setRoot(x.set_root))rl=true;toast('🎁 Quà từ admin: '+(x.gold?'+'+x.gold+' vàng ':'')+(x.exp?'+'+x.exp+' EXP ':'')+(x.note||''))}catch(e){}}}}
+async function liveW(){await live();if(rl){rl=false;try{toast('✦ Linh căn đã thay đổi — đang tải lại game...')}catch(e){}try{saveGame()}catch(e){}try{await SB().push(true)}catch(e){}setTimeout(()=>location.reload(),600)}}
+setInterval(liveW,8000);setTimeout(liveW,4000);
 })();
 </script>
 </body>
