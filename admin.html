@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Tu Tiên 2D</title>
+<style>body{margin:0;background:#12121c;color:#eee;font:14px system-ui}.w{max-width:720px;margin:0 auto;padding:10px}h2{color:#ffd45c;margin:8px 0}input,textarea,button{font:inherit;padding:9px;border-radius:6px;border:1px solid #555;background:#222;color:#fff;margin:3px 0;box-sizing:border-box}input,textarea{width:100%}button{background:#3a5fc8;border:0;cursor:pointer;margin-right:4px}button.g{background:#1d7a46}button.r{background:#8a2a2a}.tabs{display:flex;gap:4px;margin:8px 0}.tabs button{flex:1;background:#2a2a3a}.tabs button.on{background:#7a5a14}.row{background:#1c1c2a;border:1px solid #333;border-radius:8px;padding:8px;margin:6px 0;word-break:break-word}small{color:#999}#msg{color:#ffd45c;min-height:18px}</style></head><body><div class="w">
+<h2>⚙ Admin Tu Tiên 2D</h2><div id="msg"></div>
+<div id="lg"><input id="u" placeholder="Tên tài khoản" autocapitalize="none"><input id="p" type="password" placeholder="Mật khẩu"><button class="g" onclick="login()">Đăng nhập admin</button></div>
+<div id="ap" style="display:none"><div class="tabs"><button data-t="pl">Người chơi</button><button data-t="bo">Boss</button><button data-t="an">Thông báo</button><button data-t="ch">Chat</button></div><div id="c"></div></div></div>
+<script>
+const URL_='https://ljwsmbqljjsripftoxuf.supabase.co',KEY='sb_publishable_73XmfBfumISU69Paon67aA_3fnyuWl8';let T=null,ME=null;
+const $=id=>document.getElementById(id),msg=t=>$('msg').textContent=t||'';
+async function api(m,path,body,pref){const h={apikey:KEY,Authorization:'Bearer '+(T||KEY),'Content-Type':'application/json'};if(pref)h.Prefer=pref;const r=await fetch(URL_+path,{method:m,headers:h,body:body?JSON.stringify(body):undefined});const t=await r.text();let j;try{j=t?JSON.parse(t):null}catch(e){j=t}if(!r.ok)throw new Error((j&&(j.message||j.msg))||('Lỗi '+r.status));return j}
+const rest=(p)=>api('GET','/rest/v1/'+p);
+function el(tag,txt,cls){const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e}
+function btn(t,f,cls){const b=el('button',t,cls);b.onclick=async()=>{try{msg('...');await f();msg('Xong.')}catch(e){msg(e.message)}};return b}
+async function login(){const u=$('u').value.trim().toLowerCase(),p=$('p').value;msg('Đang đăng nhập...');
+ try{const j=await api('POST','/auth/v1/token?grant_type=password',{email:u+'@tutien.game',password:p});T=j.access_token;ME=j.user.id;
+  const a=await rest('admins?select=user_id');if(!a.length){T=null;return msg('Tài khoản này không phải admin.')}
+  $('lg').style.display='none';$('ap').style.display='block';msg('');show('pl')}catch(e){msg(/invalid/i.test(e.message)?'Sai tên hoặc mật khẩu.':e.message)}}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+async function show(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));const c=$('c');c.textContent='Đang tải...';
+ try{c.textContent='';await({pl,bo,an,ch}[t])(c)}catch(e){c.textContent=e.message}}
+async function pl(c){const [s,b]=await Promise.all([rest('saves?select=user_id,username,updated_at&order=updated_at.desc&limit=100'),rest('bans?select=user_id')]);const bs=new Set(b.map(x=>x.user_id));
+ c.appendChild(el('small','Tổng '+s.length+' người chơi (mới đồng bộ gần nhất ở trên)'));
+ s.forEach(p=>{const d=el('div',null,'row');d.appendChild(el('b',p.username+(bs.has(p.user_id)?' 🔒 (đang bị khóa)':'')));d.appendChild(el('div','Lưu lúc: '+new Date(p.updated_at).toLocaleString('vi-VN'),'small'));
+  d.appendChild(btn('⚡ Tu vi / Linh căn',async()=>tuvi(p,d)));
+  d.appendChild(btn('🎁 Tặng quà',async()=>{const g=+prompt('Số vàng tặng (0 nếu không):','0')||0,x=+prompt('Số EXP tặng (0 nếu không):','0')||0;if(!g&&!x)return;await api('POST','/rest/v1/gifts',{user_id:p.user_id,gold:g,exp:x,note:'🎁'},'return=minimal')},'g'));
+  d.appendChild(bs.has(p.user_id)?btn('Mở khóa',async()=>{await api('DELETE','/rest/v1/bans?user_id=eq.'+p.user_id);show('pl')},'g'):btn('Khóa',async()=>{const r=prompt('Lý do khóa:','')||'';await api('POST','/rest/v1/bans',{user_id:p.user_id,reason:r},'return=minimal');show('pl')},'r'));c.appendChild(d)})}
+
+const REALMS=[['Luyện Khí',5],['Trúc Cơ',11],['Kim Đan',17],['Nguyên Anh',23],['Hóa Thần',29],['Luyện Hư',35],['Hợp Thể',41],['Đại Thừa',47],['Độ Kiếp',53],['Chân Tiên',59],['Kim Tiên',65],['Tiên Quân',71],['Tiên Đế',77]];
+const ROOTS=[['pham','Phàm Linh Căn'],['ha_kim','Kim Linh Căn'],['ha_moc','Mộc Linh Căn'],['ha_thuy','Thủy Linh Căn'],['ha_hoa','Hỏa Linh Căn'],['ha_tho','Thổ Linh Căn'],['th_phong','Phong Linh Căn'],['th_loi','Lôi Linh Căn'],['th_bang','Băng Linh Căn'],['ti_thanh','Thanh Long Linh Căn'],['ti_kim','Kim Long Linh Căn'],['ti_hac','Hắc Long Linh Căn'],['hon_don','Hỗn Độn Linh Căn'],['none','Xóa linh căn (chưa khai mở)']];
+function sel(opts,first){const s=document.createElement('select');s.style.cssText='width:100%;padding:9px;margin:3px 0;background:#222;color:#fff;border-radius:6px;border:1px solid #555';const o=document.createElement('option');o.value='';o.textContent=first;s.appendChild(o);opts.forEach(x=>{const e=document.createElement('option');e.value=x[1];e.textContent=x[0]+(typeof x[1]==='number'?' (tầng '+x[1]+')':'');s.appendChild(e)});return s}
+function tuvi(p,d){if(d.querySelector('.tv'))return;const b=el('div',null,'tv');b.appendChild(el('small','Tu vi (cảnh giới) – chọn mốc hoặc nhập tầng 1-100; bỏ trống = giữ nguyên'));
+ const r=sel(REALMS,'— Chọn cảnh giới —'),n=document.createElement('input');n.type='number';n.min=1;n.max=100;n.placeholder='Tầng (cấp) 1-100';r.onchange=()=>{if(r.value)n.value=r.value};
+ const l=sel(ROOTS.map(x=>[x[1],x[0]]),'— Giữ nguyên linh căn —');
+ b.append(r,n,l,btn('Áp dụng',async()=>{const lv=+n.value||0,rt=l.value;if(!lv&&!rt)throw new Error('Chưa chọn gì.');if(lv&&(lv<1||lv>100))throw new Error('Tầng phải từ 1 đến 100.');
+  await api('POST','/rest/v1/gifts',{user_id:p.user_id,set_level:lv||null,set_root:rt||null,note:'(Admin chỉnh tu vi/linh căn)'},'return=minimal');b.remove();msg('Đã gửi lệnh — người chơi nhận trong ~8 giây khi đang online.')},'g'),btn('Hủy',async()=>b.remove(),'r'));d.appendChild(b)}
+async function bo(c){const s=await rest('boss_state?select=*&order=id');
+ s.forEach(b=>{const d=el('div',null,'row');d.appendChild(el('b',b.nm+' — '+(b.alive?'ĐANG SỐNG':'đã chết')));d.appendChild(el('div','Máu: '+b.hp.toLocaleString('vi-VN')+' / '+b.hpmax.toLocaleString('vi-VN')+' • Vòng '+b.round+' • Hồi sinh sau '+Math.round(b.respawn_secs/60)+' phút','small'));
+  const call=(a,v)=>async()=>{await api('POST','/rest/v1/rpc/admin_boss',{p_boss:b.id,p_action:a,p_val:v});show('bo')};
+  d.appendChild(btn('Triệu hồi ngay',call('spawn',0),'g'));d.appendChild(btn('Hạ gục',call('kill',0),'r'));
+  d.appendChild(btn('Đặt máu tối đa',async()=>{const v=+prompt('Máu tối đa (có hiệu lực từ lần triệu hồi sau):',b.hpmax);if(v)await call('hpmax',v)()}));
+  d.appendChild(btn('Đặt giờ hồi sinh',async()=>{const v=+prompt('Hồi sinh sau bao nhiêu phút?',Math.round(b.respawn_secs/60));if(v)await call('respawn',Math.round(v*60))()}));c.appendChild(d)})}
+async function an(c){const t=el('textarea');t.rows=3;t.placeholder='Nội dung thông báo toàn server';c.appendChild(t);
+ c.appendChild(btn('📢 Gửi thông báo',async()=>{const v=t.value.trim();if(!v)return;await api('POST','/rest/v1/announcements',{body:v.slice(0,200)},'return=minimal');show('an')},'g'));
+ (await rest('announcements?select=id,body,created_at&order=id.desc&limit=15')).forEach(a=>{const d=el('div',null,'row');d.appendChild(el('div',a.body));d.appendChild(el('small',new Date(a.created_at).toLocaleString('vi-VN')));d.appendChild(btn('Xóa',async()=>{await api('DELETE','/rest/v1/announcements?id=eq.'+a.id);show('an')},'r'));c.appendChild(d)})}
+async function ch(c){(await rest('chat_messages?select=id,name,body,created_at&order=id.desc&limit=50')).forEach(m=>{const d=el('div',null,'row');d.appendChild(el('b',m.name+': '));d.appendChild(el('span',m.body));d.appendChild(el('div',new Date(m.created_at).toLocaleString('vi-VN'),'small'));d.appendChild(btn('Xóa',async()=>{await api('DELETE','/rest/v1/chat_messages?id=eq.'+m.id);show('ch')},'r'));c.appendChild(d)})}
+</script></body></html>
